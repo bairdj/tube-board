@@ -1,5 +1,5 @@
 <template>
-    <div class="displayLine">
-        <slot></slot>
-    </div>
+  <div class="displayLine">
+    <slot />
+  </div>
 </template>
