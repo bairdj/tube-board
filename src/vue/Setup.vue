@@ -2,53 +2,23 @@
   <div id="setup">
     <h3>Setup Tube Board</h3>
     <form>
-      <label>1. Select station</label>
-      <div v-if="!station">
-        <input
-          v-model="stationQuery"
-          type="text"
-          placeholder="Search station name..."
-          @input="searchStations"
-        >
-        <ul v-if="stations && stations.length > 0">
-          <li
-            v-for="station in stations"
-            class="stationItem"
-            @click="selectStation(station)"
-          >
-            {{ station.name }}
-          </li>
-        </ul>
+      <div class="group">
+        <label>1. Select station</label>
+        <VSelect @search="searchStations" @input="selectStation" :options="stations" label="name"/>
       </div>
-      <div v-else>
-        <h3>{{ station.name }}</h3>
+      <div v-if="station" class="group">
         <label>2. Select line</label>
         <p v-if="loadingLines">
           Loading Tube lines...
         </p>
-        <ul v-if="lines">
-          <li
-            v-for="line in lines"
-            class="stationItem"
-            @click="selectLine(line)"
-          >
-            {{ line.name }}
-          </li>
-        </ul>
+        <VSelect v-if="lines" :options="lines" label="name" @input="selectLine"/>
       </div>
-      <div v-if="station && line">
+      <div v-if="station && line" class="group">
         <label>3. Select direction</label>
-        <select
-          v-model="direction"
-          @change="selectDirection"
-        >
-          <option value="inbound">
-            Inbound
-          </option>
-          <option value="outbound">
-            Outbound
-          </option>
-        </select>
+        <VSelect :options="directions"
+                 @input="selectDirection"
+                 :reduce="direction => direction.value"
+        />
       </div>
     </form>
     <div
@@ -56,12 +26,6 @@
       class="error"
     >
       {{ error }}
-    </div>
-    <div
-      v-if="stations && stations.length === 0"
-      class="error"
-    >
-      No stations found.
     </div>
   </div>
 </template>
@@ -112,11 +76,18 @@
         margin: 10px 0;
         padding: 5px;
     }
+
+  .group {
+    margin-bottom: 5px;
+  }
 </style>
 
 <script>
+import VSelect from 'vue-select';
 import client, { TflClient } from '../TflClient';
 import Config from '../Config';
+
+import 'vue-select/dist/vue-select.css';
 
 function extractNaptan(station) {
   return new Promise((resolve, reject) => {
@@ -146,35 +117,55 @@ function extractNaptan(station) {
   });
 }
 
+const directions = [{
+  label: 'Inbound',
+  value: 'inbound',
+},
+{
+  label: 'Outbound',
+  value: 'outbound',
+},
+];
+
 export default {
+  components: {
+    VSelect,
+  },
   data() {
     return {
       stationQuery: null,
       station: null,
-      stations: null,
+      stations: [],
       error: null,
       lines: null,
       loadingLines: false,
       line: null,
       direction: null,
+      directions,
     };
   },
   created() {
 
   },
   methods: {
-    searchStations() {
+    searchStations(term, loading) {
       // Query list of stations
-      if (this.stationQuery.length < 4) return;
+      if (term.length < 4) return;
+      loading(true);
       client.get('StopPoint/Search', {
-        query: this.stationQuery,
+        query: term,
         modes: 'tube',
       }).then((response) => {
+        loading(false);
         this.stations = response.data.matches;
       });
     },
     selectStation(station) {
       this.station = station;
+      if (station == null) {
+        this.lines = null;
+        return;
+      }
       extractNaptan(station)
         .then((naptan) => {
           Config.setStation(naptan);
@@ -208,8 +199,8 @@ export default {
       Config.setLine(line.id);
       this.line = line.name;
     },
-    selectDirection() {
-      Config.setDirection(this.direction);
+    selectDirection(direction) {
+      Config.setDirection(direction);
       this.$parent.$emit('setupComplete');
     },
   },
