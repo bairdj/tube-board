@@ -20,7 +20,7 @@
     "webpack-cli": "^3.2.3"
   },
   "dependencies": {
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "vue": "^2.6.6",
     "vue-select": "^3.4.0"
   },
